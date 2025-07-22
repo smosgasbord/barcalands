@@ -15,7 +15,7 @@
 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ -84.3382656, 9.562608 ], [ -84.3384182, 9.5626564 ], [ -84.338604, 9.5620967 ], [ -84.3384402, 9.5620322 ], [ -84.3382656, 9.562608 ] ] ] } }
 ],[
 { "type": "Feature", "properties": { 
-name": "Lote Punta de Plancha",
+"name": "Lote Punta de Plancha",
         "open": 1,
         "styleUrl": "#msn_ylw-pushpin",
         "stroke-opacity": 1,
