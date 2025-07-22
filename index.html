@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Propiedades</title>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            background-color: #f0f2f5;
+        }
+
+        .container {
+            display: flex;
+            height: 100%;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .filter-header {
+           
+      
+            padding: 20px;
+            text-align: center;
+        }
+
+        .filter-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .filter-content {
+            padding: 25px;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .filter-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+
+        #canton-select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            background-color: white;
+            transition: border-color 0.3s ease;
+        }
+
+        #canton-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #price-slider {
+            margin: 20px 0;
+            height: 10px;
+        }
+
+        .price-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .price-display span {
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .ui-slider-horizontal {
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .ui-slider .ui-slider-handle {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            top: -5px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .ui-slider .ui-slider-handle:hover {
+            transform: scale(1.1);
+        }
+
+        .ui-slider .ui-slider-handle:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+
+        .ui-slider-range {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px;
+        }
+
+        .maplibregl-popup {
+            max-width: 300px;
+        }
+
+        .maplibregl-popup-content {
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .property-popup h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 1.2rem;
+        }
+
+        .property-popup p {
+            margin: 8px 0;
+            color: #6c757d;
+        }
+
+        .property-popup strong {
+            color: #495057;
+        }
+
+        .property-popup a {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: transform 0.2s ease;
+        }
+
+        .property-popup a:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .filter-stats {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+            color: #0c5460;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="filter-header">
+                <h2>Filtros de Búsqueda</h2>
+            </div>
+            <div class="filter-content">
+                <div class="filter-group">
+                    <label for="price-range">💰 Rango de Precio (USD):</label>
+                    <div id="price-slider"></div>
+                    <div class="price-display">
+                        <span id="min-price">$0</span>
+                        <span id="max-price">$1,000,000</span>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="canton-select">📍 Cantón:</label>
+                    <select id="canton-select">
+                        <option value="all">Todos los cantones</option>
+                    </select>
+                </div>
+                
+                <div class="filter-stats" id="filter-stats">
+                    Cargando propiedades...
+                </div>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    
+    <script>
+        $(document).ready(() => {
+            // Variables globales
+            let map
+            let geojsonData
+            let processedData = {
+                boundaries: null,
+                points: null
+            }
+            let minPrice = 0
+            let maxPrice = 1000000
+            let currentMinPrice = 0
+            let currentMaxPrice = 1000000
+            let selectedCanton = "all"
+            const geojsonUrl = "https://raw.githubusercontent.com/smosgasbord/barcalands/refs/heads/main/map2.geojson"
+
+            // Estilo de mapa básico usando OpenStreetMap
+            const mapStyle = {
+                "version": 8,
+                "sources": {
+                    "osm": {
+                        "type": "raster",
+                        "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                        "tileSize": 256,
+                        "attribution": "&copy; OpenStreetMap Contributors",
+                        "maxzoom": 19
+                    }
+                },
+                "layers": [
+                    {
+                        "id": "osm",
+                        "type": "raster",
+                        "source": "osm"
+                    }
+                ]
+            }
+
+            // Inicializar el mapa
+            function initMap() {
+                map = new maplibregl.Map({
+                    container: "map",
+                    style: mapStyle,
+                    center: [-83.5, 8.89],
+                    zoom: 13
+                })
+
+                map.addControl(new maplibregl.NavigationControl())
+
+                map.on("load", () => {
+                    loadGeoJSON()
+                })
+            }
+
+            // Cargar datos GeoJSON
+            function loadGeoJSON() {
+                $.getJSON(geojsonUrl, (data) => {
+                    geojsonData = data
+                    processGeoJSON()
+                    populateCantonDropdown()
+                    initPriceSlider()
+                    applyFilters()
+                }).fail((error) => {
+                    console.error("Error loading GeoJSON:", error)
+                    $("#filter-stats").html("❌ Error al cargar los datos")
+                })
+            }
+
+            // Procesar GeoJSON y separar geometrías
+            function processGeoJSON() {
+                const boundaryFeatures = []
+                const pointFeatures = []
+
+                geojsonData.features.forEach((feature, index) => {
+                    // Procesar precio
+                    if (feature.properties.usdPrice) {
+                        const priceStr = feature.properties.usdPrice.toString().replace(/,/g, "")
+                        feature.properties.priceUsd = parseFloat(priceStr)
+                    } else {
+                        feature.properties.priceUsd = 0
+                    }
+
+                    // Asegurar que canton existe
+                    if (!feature.properties.canton) {
+                        feature.properties.canton = "Sin especificar"
+                    }
+
+                    // Procesar GeometryCollection
+                    if (feature.geometry.type === "GeometryCollection") {
+                        feature.geometry.geometries.forEach(geom => {
+                            if (geom.type === "LineString") {
+                                // Crear feature para límites
+                                boundaryFeatures.push({
+                                    type: "Feature",
+                                    id: `boundary_${index}`,
+                                    geometry: geom,
+                                    properties: { ...feature.properties }
+                                })
+                            } else if (geom.type === "Point") {
+                                // Crear feature para punto central
+                                pointFeatures.push({
+                                    type: "Feature",
+                                    id: `point_${index}`,
+                                    geometry: geom,
+                                    properties: { ...feature.properties }
+                                })
+                            }
+                        })
+                    } else if (feature.geometry.type === "LineString") {
+                        // LineString directo
+                        boundaryFeatures.push({
+                            type: "Feature",
+                            id: `boundary_${index}`,
+                            geometry: feature.geometry,
+                            properties: { ...feature.properties }
+                        })
+                    } else if (feature.geometry.type === "Point") {
+                        // Point directo
+                        pointFeatures.push({
+                            type: "Feature",
+                            id: `point_${index}`,
+                            geometry: feature.geometry,
+                            properties: { ...feature.properties }
+                        })
+                    }
+                })
+
+                // Crear GeoJSON separados
+                processedData.boundaries = {
+                    type: "FeatureCollection",
+                    features: boundaryFeatures
+                }
+
+                processedData.points = {
+                    type: "FeatureCollection",
+                    features: pointFeatures
+                }
+
+                console.log(`Procesadas ${boundaryFeatures.length} líneas y ${pointFeatures.length} puntos`)
+
+                // Añadir fuentes al mapa
+                map.addSource("property-boundaries", {
+                    type: "geojson",
+                    data: processedData.boundaries
+                })
+
+                map.addSource("property-points", {
+                    type: "geojson",
+                    data: processedData.points
+                })
+
+                // Añadir capas
+                addMapLayers()
+            }
+
+            // Añadir capas al mapa
+            function addMapLayers() {
+                // Capa de líneas (límites de propiedades)
+                map.addLayer({
+                    id: "property-boundaries-layer",
+                    type: "line",
+                    source: "property-boundaries",
+                    paint: {
+                        "line-color": "#FF55FF",
+                        "line-width": 3,
+                        "line-opacity": 0.8
+                    }
+                })
+
+                // Capa de puntos centrales
+                map.addLayer({
+                    id: "property-points-layer",
+                    type: "circle",
+                    source: "property-points",
+                    paint: {
+                        "circle-radius": 8,
+                        "circle-color": "#FF0000",
+                        "circle-stroke-width": 2,
+                        "circle-stroke-color": "#FFFFFF",
+                        "circle-opacity": 0.9
+                    }
+                })
+
+                // Configurar interacciones
+                setupMapInteractions()
+            }
+
+            // Configurar interacciones del mapa
+            function setupMapInteractions() {
+                // Click en puntos
+                map.on("click", "property-points-layer", (e) => {
+                    const properties = e.features[0].properties
+
+                    const popupContent = `
+                        <div class="property-popup">
+                            <h3>${properties.name || "Propiedad"}</h3>
+                            <p><strong>Precio:</strong> $${properties.priceUsd ? properties.priceUsd.toLocaleString() : "No disponible"}</p>
+                            <p><strong>Cantón:</strong> ${properties.canton || "No disponible"}</p>
+                            ${properties.link ? `<a href="${properties.link}" target="_blank">Ver detalles</a>` : ""}
+                        </div>
+                    `
+
+                    new maplibregl.Popup()
+                        .setLngLat(e.lngLat)
+                        .setHTML(popupContent)
+                        .addTo(map)
+                })
+
+                // Cambiar cursor
+                map.on("mouseenter", "property-points-layer", () => {
+                    map.getCanvas().style.cursor = "pointer"
+                })
+
+                map.on("mouseleave", "property-points-layer", () => {
+                    map.getCanvas().style.cursor = ""
+                })
+            }
+
+            // Inicializar el slider de precios
+            function initPriceSlider() {
+                const prices = processedData.points.features
+                    .map((feature) => feature.properties.priceUsd)
+                    .filter((price) => !isNaN(price) && price > 0)
+
+                if (prices.length > 0) {
+                    minPrice = Math.min(...prices)
+                    maxPrice = Math.max(...prices)
+                } else {
+                    minPrice = 0
+                    maxPrice = 1000000
+                }
+
+                // Redondear para valores más limpios
+                minPrice = Math.floor(minPrice / 1000) * 1000
+                maxPrice = Math.ceil(maxPrice / 1000) * 1000
+
+                // Establecer valores actuales
+                currentMinPrice = minPrice
+                currentMaxPrice = maxPrice
+
+                // Actualizar display
+                $("#min-price").text("$" + minPrice.toLocaleString())
+                $("#max-price").text("$" + maxPrice.toLocaleString())
+
+                // Inicializar slider
+                $("#price-slider").slider({
+                    range: true,
+                    min: minPrice,
+                    max: maxPrice,
+                    values: [minPrice, maxPrice],
+                    slide: (event, ui) => {
+                        $("#min-price").text("$" + ui.values[0].toLocaleString())
+                        $("#max-price").text("$" + ui.values[1].toLocaleString())
+                    },
+                    change: (event, ui) => {
+                        currentMinPrice = ui.values[0]
+                        currentMaxPrice = ui.values[1]
+                        applyFilters()
+                    },
+                })
+            }
+
+            // Poblar dropdown de cantones
+            function populateCantonDropdown() {
+                const cantons = new Set()
+
+                processedData.points.features.forEach((feature) => {
+                    if (feature.properties.canton) {
+                        cantons.add(feature.properties.canton)
+                    }
+                })
+
+                const sortedCantons = Array.from(cantons).sort()
+
+                // Limpiar opciones existentes (excepto "Todos")
+                $("#canton-select option:not(:first)").remove()
+
+                // Añadir cantones
+                sortedCantons.forEach((canton) => {
+                    $("#canton-select").append(`<option value="${canton}">${canton}</option>`)
+                })
+
+                // Event listener
+                $("#canton-select").off("change").on("change", function () {
+                    selectedCanton = $(this).val()
+                    applyFilters()
+                })
+            }
+
+            // Aplicar filtros
+            function applyFilters() {
+                // Filtrar puntos
+                const filteredPoints = processedData.points.features.filter((feature) => {
+                    const price = feature.properties.priceUsd || 0
+                    const canton = feature.properties.canton || ""
+                    
+                    const priceMatch = price >= currentMinPrice && price <= currentMaxPrice
+                    const cantonMatch = selectedCanton === "all" || canton === selectedCanton
+                    
+                    return priceMatch && cantonMatch
+                })
+
+                // Filtrar límites correspondientes
+                const filteredBoundaries = processedData.boundaries.features.filter((feature) => {
+                    const price = feature.properties.priceUsd || 0
+                    const canton = feature.properties.canton || ""
+                    
+                    const priceMatch = price >= currentMinPrice && price <= currentMaxPrice
+                    const cantonMatch = selectedCanton === "all" || canton === selectedCanton
+                    
+                    return priceMatch && cantonMatch
+                })
+
+                // Actualizar fuentes del mapa
+                map.getSource("property-points").setData({
+                    type: "FeatureCollection",
+                    features: filteredPoints
+                })
+
+                map.getSource("property-boundaries").setData({
+                    type: "FeatureCollection",
+                    features: filteredBoundaries
+                })
+
+                // Actualizar estadísticas
+                updateStats(filteredPoints.length, processedData.points.features.length)
+
+                console.log(`Filtros aplicados: ${filteredPoints.length} propiedades visibles`)
+            }
+
+            // Actualizar estadísticas
+            function updateStats(filteredCount, totalCount) {
+                $("#filter-stats").html(`
+                    📊 Mostrando <strong>${filteredCount}</strong> de <strong>${totalCount}</strong> propiedades
+                `)
+            }
+
+            // Iniciar la aplicación
+            initMap()
+        })
+    </script>
+</body>
+</html>
