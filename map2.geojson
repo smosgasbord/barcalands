@@ -28,7 +28,7 @@
     {
       "type": "Feature",
       "geometry": {
-        "type": "LineString",
+        "type": "Polygon",
         "coordinates": [
           [
             -83.5031291479458,
@@ -5177,7 +5177,7 @@
     {
       "type": "Feature",
       "geometry": {
-        "type": "LineString",
+        "type": "Polygon",
         "coordinates": [
           [
             -83.29731831985745,
