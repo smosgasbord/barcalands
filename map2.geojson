@@ -28,7 +28,7 @@
     {
       "type": "Feature",
       "geometry": {
-        "type": "P",
+        "type": "LineString",
         "coordinates": [
           [
             -83.5031291479458,
